@@ -1,2 +1,2 @@
 # GaussAlchemy
-Simple puzzle game inspired in gauss-jordan elimination. Made for PICO8
+Simple puzzle game inspired by gauss-jordan elimination. Made for PICO8
