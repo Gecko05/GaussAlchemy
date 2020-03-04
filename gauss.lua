@@ -85,7 +85,7 @@ function _init()
         end
     end
 end
----------------------------- U P D A T E --------------------
+--------------------R O W   M A N A G E M E N T--------------
 function duplicateRow(r)
     dRow = Row:new(r.n, r.gems, 0, r.n)
 end
@@ -141,6 +141,7 @@ function transmuteRow(r)
         printh(gem, 'debug.txt', true)
     end
 end
+---------------------------- U P D A T E --------------------
 
 function processUp()
     if Sel.n > 0 and Sel.state == 1 then
