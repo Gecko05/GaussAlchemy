@@ -15,17 +15,20 @@ local dbmatrix = {{-2, -1, -1},{0, 1, 0},{2, 2, 1}}
 local nrows = 3
 local initialstate = 1
 local sel = {n = 0, state = initialstate}
+local factor = 1
+local drow = nil
 ---------------------------- r o w s -------------------------
-row = {n = 0, gems = 0, state = 0}
+row = {n = 0, gems = 0, state = 0, flag = 0}
 -- n - num of row
 -- gems - table with gems
 -- state : 0 duplicate, 1 in matrix, 2 transmutation
-function row:new (n, gems, state)
+function row:new (n, gems, state, flag)
     self.__index = self
     o = {}
     o.n = n
     o.gems = gems
     o.state = state
+    o.flag = flag
     return setmetatable(o, self)
 end
 
@@ -61,13 +64,19 @@ end
 function drawmatrix()  
     for i = 1, nrows do
         matrix[i]:draw()
-        print(matrix[i].n)
+    end
+end
+
+function drawduplicate()
+    if drow ~= nil then
+        drow:draw()
     end
 end
 
 function _draw()
  cls(1)
  drawmatrix()
+ drawduplicate()
  drawsel()
 end
 ---------------------------- i n i t ------------------------
@@ -80,23 +89,91 @@ function _init()
     end
 end
 ---------------------------- u p d a t e --------------------
+function duplicaterow(r)
+    drow = row:new(r.n, r.gems, 0, r.n)
+end
+
+function addrows(r)
+    if r.n ~= drow.flag then
+        for i = 1,nrows do
+            local gem1 = matrix[r.n].gems[i]
+            local gem2 = drow.gems[i]
+            gem1 = gem1 + gem2
+            if gem1 > 2 then
+                gem1 = -2
+            elseif gem1 < -2 then
+                gem1 = 2
+            end
+            matrix[r.n].gems[i] = gem1
+        end
+    end
+end
+
 -- d - 1 to the right
 -- d - 0 to the left
 function moverow(d)
     local r = matrix[sel.n+1]
-    if d == 1 and r.state < 2 then
+    if d == 1 and sel.state == 0 then
+        addrows(r)
+        drow = nil    
+        sel.state = 1
+    elseif d == 1 and sel.state < 2 then
         r.state = r.state + 1
-    elseif d == 0 and r.state > 0 then
+        sel.state = r.state
+    elseif d == 0 and sel.state > 1 then
         r.state = r.state - 1
+        sel.state = r.state
+    elseif d == 0 and sel.state == 1 then
+        duplicaterow(r)
+        drow.state = 0
+        sel.state = drow.state
     end
-    sel.state = r.state
+end
+
+function transmuterow(r)
+    for i=1, nrows do
+        local rowg = matrix[r].gems
+        local gem = rowg[i]
+        gem = gem + factor
+        if gem < -2 then
+            gem = 2
+        elseif gem > 2 then
+            gem = -2
+        end
+        matrix[r].gems[i] = gem
+        printh(gem, 'debug.txt', true)
+    end
+end
+
+function processup()
+    if sel.n > 0 and sel.state == 1 then
+        sel.n = sel.n - 1
+    elseif sel.state == 2 then -- transmutation
+        factor = 1
+        transmuterow(sel.n+1)
+    elseif sel.state == 0 and sel.n > 0 then -- duplicate and add
+        sel.n = sel.n - 1
+        drow.n = sel.n + 1
+    end
+end
+
+function processdown()
+    if sel.n < 2 and sel.state == 1 then
+        sel.n = sel.n + 1
+    elseif sel.state == 2 then -- transmutation
+        factor = -1
+        transmuterow(sel.n+1)
+    elseif sel.state == 0 and sel.n < 2 then
+        sel.n = sel.n + 1
+        drow.n = sel.n + 1
+    end
 end
 
 function _update()
- if btnp(3) and sel.n < 2 and sel.state == 1 then
-  sel.n = sel.n + 1
- elseif btnp(2) and sel.n > 0 and sel.state == 1 then
-  sel.n = sel.n - 1
+ if btnp(3) then
+  processdown()
+ elseif btnp(2) then
+  processup()
  elseif btnp(1) then
   moverow(1)
  elseif btnp(0) then
