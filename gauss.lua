@@ -1,15 +1,18 @@
 -- gauss alchemy
 -- puzzle game inspired by gauss jordan
 
-local sx0 = 40
+local sx0 = 60
 local sy0 = 40
-local tx0 = 3*10
+local tx0 = 3*16
 local wh = 5
 
 local matrix = {}
 local debug = 1
-local dbMatrix = {{-2, -1, -1},{0, 1, 0},{2, 2, 1}}
+local minI = -2
+local maxI = 2
+local dbMatrix = {{0,-1, -1},{1, 2, 1},{2, 2, -2}}
 local nRows = 3
+local sprInc = 32
 local initialState = 1
 local Sel = {n = 0, state = initialState}
 local factor = 1
@@ -31,22 +34,24 @@ end
 
 function Row:draw()
     for i = 0, nRows-1 do
-        local dx = (i %3) * 10
+        local dx = (i %3) * 16
         if self.state == 2 then
             dx = dx + tx0
         elseif self.state == 0 then
             dx = dx - tx0
         end
-        local dy = (self.n - 1) * 10
+        local dy = (self.n - 1) * 17
         local x0 = sx0 + dx
         local y0 = sy0 + dy
-        rect(x0, y0, x0+wh, y0+wh, self.gems[i+1]+10)
+        local sprGem = (self.gems[i+1] + 2) * 32
+        spr(sprGem, x0, y0, 2, 2)
+        --rect(x0, y0, x0+wh, y0+wh, -self.gems[i+1]+10)
     end
 end
 
 function drawSel()
-    local w = 29
-    local h = 9
+    local w = 48
+    local h = 16
     local margin = 2
     local y0 = (Sel.n*(h + 1)) + sy0 - margin
     local x0 = sx0 - margin
@@ -71,7 +76,7 @@ function drawDuplicate()
 end
 
 function _draw()
- cls(1)
+ cls(0)
  drawMatrix()
  drawDuplicate()
  drawSel()
@@ -85,9 +90,18 @@ function _init()
         end
     end
 end
---------------------R O W   M A N A G E M E N T--------------
+---------------------------- U P D A T E --------------------
+function cloneTable(t)
+    x = {}
+    for k, v in pairs(t) do
+        add(x, v)
+    end
+    return x
+end
+
 function duplicateRow(r)
-    dRow = Row:new(r.n, r.gems, 0, r.n)
+    newGems = cloneTable(r.gems)
+    dRow = Row:new(r.n, newGems, 0, r.n)
 end
 
 function addRows(r)
@@ -95,11 +109,14 @@ function addRows(r)
         for i = 1,nRows do
             local gem1 = matrix[r.n].gems[i]
             local gem2 = dRow.gems[i]
-            gem1 = gem1 + gem2
-            if gem1 > 2 then
-                gem1 = -2
-            elseif gem1 < -2 then
-                gem1 = 2
+            if gem1 ~= gem2 then
+                gem1 = gem1 + gem2
+            end
+            -- Control overflow
+            if gem1 > maxI then
+                gem1 = minI
+            elseif gem1 < minI then
+                gem1 = maxI
             end
             matrix[r.n].gems[i] = gem1
         end
@@ -114,9 +131,6 @@ function moveRow(d)
         addRows(r)
         dRow = nil    
         Sel.state = 1
-    elseif d == 1 and Sel.state < 2 then
-        r.state = r.state + 1
-        Sel.state = r.state
     elseif d == 0 and Sel.state > 1 then
         r.state = r.state - 1
         Sel.state = r.state
@@ -127,28 +141,37 @@ function moveRow(d)
     end
 end
 
-function transmuteRow(r)
-    for i=1, nRows do
-        local rowG = matrix[r].gems
-        local gem = rowG[i]
-        gem = gem + factor
-        if gem < -2 then
-            gem = 2
-        elseif gem > 2 then
-            gem = -2
+function transmuteRow()
+    if Sel.state == 1 then
+        for i=1, nRows do
+            local rowG = matrix[Sel.n + 1].gems
+            local gem = rowG[i]
+            gem = gem + factor
+            if gem < minI then
+                gem = maxI
+            elseif gem > maxI then
+                gem = minI
+            end
+            matrix[Sel.n + 1].gems[i] = gem
         end
-        matrix[r].gems[i] = gem
-        printh(gem, 'debug.txt', true)
+    elseif Sel.state == 0 then
+        for i=1, nRows do
+            local rowG = dRow.gems
+            local gem = rowG[i]
+            gem = gem + factor
+            if gem < minI then
+                gem = maxI
+            elseif gem > maxI then
+                gem = minI
+            end
+            dRow.gems[i] = gem
+        end
     end
 end
----------------------------- U P D A T E --------------------
 
 function processUp()
     if Sel.n > 0 and Sel.state == 1 then
         Sel.n = Sel.n - 1
-    elseif Sel.state == 2 then -- Transmutation
-        factor = 1
-        transmuteRow(Sel.n+1)
     elseif Sel.state == 0 and Sel.n > 0 then -- Duplicate and add
         Sel.n = Sel.n - 1
         dRow.n = Sel.n + 1
@@ -158,9 +181,6 @@ end
 function processDown()
     if Sel.n < 2 and Sel.state == 1 then
         Sel.n = Sel.n + 1
-    elseif Sel.state == 2 then -- Transmutation
-        factor = -1
-        transmuteRow(Sel.n+1)
     elseif Sel.state == 0 and Sel.n < 2 then
         Sel.n = Sel.n + 1
         dRow.n = Sel.n + 1
@@ -168,7 +188,9 @@ function processDown()
 end
 
 function _update()
- if btnp(3) then
+ if btnp(4) then
+  transmuteRow()
+ elseif btnp(3) then
   processDown()
  elseif btnp(2) then
   processUP()
