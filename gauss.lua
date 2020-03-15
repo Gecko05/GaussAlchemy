@@ -1,11 +1,6 @@
 -- gauss alchemy
 -- puzzle game inspired by gauss jordan
 
-local sx0 = 60
-local sy0 = 40
-local tx0 = 3*16
-local wh = 5
-
 local matrix = {}
 local debug = 1
 local minI = -2
@@ -13,10 +8,21 @@ local maxI = 2
 local dbMatrix = {{0,-1, -1},{1, 2, 1},{2, 2, -2}}
 local nRows = 3
 local sprInc = 32
+local cursorSpr = 160
 local initialState = 1
 local Sel = {n = 0, state = initialState}
 local factor = 1
 local dRow = nil
+local addGauge = 8
+local swapGauge = 8
+
+local tileW = 9
+local matrixSize = tileW * nRows
+local sx0 = 64 - ((matrixSize)/2)
+local sy0 = 40
+local blockMargin = 11
+local tx0 = matrixSize + blockMargin
+local wh = 5
 ---------------------------- R O W S -------------------------
 Row = {n = 0, gems = 0, state = 0, flag = 0}
 -- n - num of row
@@ -34,33 +40,37 @@ end
 
 function Row:draw()
     for i = 0, nRows-1 do
-        local dx = (i %3) * 16
+        local dx = (i %3) * tileW
         if self.state == 2 then
             dx = dx + tx0
         elseif self.state == 0 then
             dx = dx - tx0
         end
-        local dy = (self.n - 1) * 17
+        local dy = (self.n - 1) * tileW
         local x0 = sx0 + dx
         local y0 = sy0 + dy
-        local sprGem = (self.gems[i+1] + 2) * 32
-        spr(sprGem, x0, y0, 2, 2)
+        local sprGem = (self.gems[i+1] + 2)*32
+        spr(sprGem, x0, y0)
         --rect(x0, y0, x0+wh, y0+wh, -self.gems[i+1]+10)
     end
 end
 
 function drawSel()
-    local w = 48
-    local h = 16
-    local margin = 2
-    local y0 = (Sel.n*(h + 1)) + sy0 - margin
+    local w = 3 * tileW
+    local h = tileW
+    local margin = 10
+    local y0 = (Sel.n*(h)) + sy0
     local x0 = sx0 - margin
+    local x1 = sx0 + matrixSize
     if Sel.state == 0 then
         x0 = x0 - tx0
+        x1 = x1 - tx0
     elseif Sel.state == 2 then
         x0 = x0 + tx0
+        x1 = x1 + tx0
     end
-    rect(x0, y0, x0 + w, y0 + h, 7)
+    spr(cursorSpr, x0, y0, 1, 1, true)
+    spr(cursorSpr, x1, y0)
 end
 ---------------------------- D R A W -------------------------
 function drawMatrix()  
@@ -75,14 +85,72 @@ function drawDuplicate()
     end
 end
 
+function drawBackground()
+    local margin = 2
+    local margin1 = 11
+    local x0 = sx0 - margin
+    local x1 = x0 + matrixSize + 1
+    local y0 = sy0 - margin
+    local y1 = y0 + matrixSize + 1
+    rectfill(x0, y0, x1, y1, 13) 
+    rect(x0-1, y0-1, x1+1, y1+1, 7) 
+
+    x0 = x0 - blockMargin - matrixSize
+    x1 = x1 - blockMargin - matrixSize
+    rectfill(x0, y0, x1, y1, 13) 
+    rect(x0-1, y0-1, x1+1, y1+1, 7) 
+
+    x0 = x0 + blockMargin * 2 + matrixSize * 2
+    x1 = x1 + blockMargin * 2 + matrixSize * 2
+    rectfill(x0, y0, x1, y1, 13) 
+    rect(x0-1, y0-1, x1+1, y1+1, 7) 
+end
+
+function drawSwapGauge()
+    local x0 = sx0 + matrixSize + blockMargin - 1
+    spr(28, x0, sy0 - blockMargin)
+    spr(29, x0+7, sy0 - blockMargin)
+    spr(29, x0+13, sy0 - blockMargin)
+    spr(28, x0+19, sy0 - blockMargin, 1, 1, true)
+    local x0 = x0
+    local y0 = sy0 - blockMargin + 1
+    local y1 = y0 + 4
+    local dx = (8 - swapGauge) * 3
+    local x1 = x0 + dx
+    rectfill(x0, y0, x1, y1, 5)
+end
+
+function drawAddGauge()
+    local x0 = sx0 - matrixSize - blockMargin - 1
+    spr(12, x0, sy0 - blockMargin)
+    spr(13, x0+7, sy0 - blockMargin)
+    spr(13, x0+13, sy0 - blockMargin)
+    spr(12, x0+19, sy0 - blockMargin, 1, 1, true)
+    local x0 = x0 + 26
+    local y0 = sy0 - blockMargin + 1
+    local y1 = y0 + 4
+    local dx = (8 - addGauge) * 3
+    local x1 = x0 - dx
+    rectfill(x0, y0, x1, y1, 5)
+end
+
+function drawGauges()
+    drawAddGauge()
+    drawSwapGauge()
+end
+
 function _draw()
- cls(0)
+ cls(6)
+ drawBackground()
+ drawGauges()
  drawMatrix()
  drawDuplicate()
  drawSel()
 end
 ---------------------------- I N I T ------------------------
 function _init()
+    palt(0, false)
+    palt(15, true)
     for i = 1, nRows do
         if debug == 1 then
         local newRow = Row:new(i, dbMatrix[i], initialState)
@@ -120,6 +188,9 @@ function addRows(r)
             end
             matrix[r.n].gems[i] = gem1
         end
+    end
+    if addGauge > 0 then
+        addGauge = addGauge - 1
     end
 end
 
@@ -166,6 +237,9 @@ function transmuteRow()
             end
             dRow.gems[i] = gem
         end
+    end
+    if swapGauge > 0 then
+        swapGauge = swapGauge - 1
     end
 end
 
