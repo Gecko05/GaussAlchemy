@@ -10,9 +10,10 @@ local nRows = 3
 local sprInc = 32
 local cursorSpr = 160
 local initialState = 1
-local Sel = {n = 0, state = initialState}
+local Sel = {n = 1, state = initialState}
 local factor = 1
 local dRow = nil
+local swapRow = nil
 local addGauge = 8
 local swapGauge = 8
 
@@ -24,17 +25,17 @@ local blockMargin = 11
 local tx0 = matrixSize + blockMargin
 local wh = 5
 ---------------------------- R O W S -------------------------
-Row = {n = 0, gems = 0, state = 0, flag = 0}
+Row = {n = 0, gems = 0, state = 0, orig = 0}
 -- n - num of row
 -- gems - table with gems
--- state : 0 duplicate, 1 in matrix, 2 transmutation
-function Row:new (n, gems, state, flag)
+-- state : 0 duplicate, 1 in matrix, 2 swap
+function Row:new (n, gems, state, orig)
     self.__index = self
     o = {}
     o.n = n
     o.gems = gems
     o.state = state
-    o.flag = flag
+    o.orig = orig
     return setmetatable(o, self)
 end
 
@@ -59,7 +60,7 @@ function drawSel()
     local w = 3 * tileW
     local h = tileW
     local margin = 10
-    local y0 = (Sel.n*(h)) + sy0
+    local y0 = ((Sel.n - 1)*(h)) + sy0
     local x0 = sx0 - margin
     local x1 = sx0 + matrixSize
     if Sel.state == 0 then
@@ -75,7 +76,9 @@ end
 ---------------------------- D R A W -------------------------
 function drawMatrix()  
     for i = 1, nRows do
-        matrix[i]:draw()
+        if matrix[i] ~= nil then
+            matrix[i]:draw()
+        end
     end
 end
 
@@ -153,7 +156,7 @@ function _init()
     palt(15, true)
     for i = 1, nRows do
         if debug == 1 then
-        local newRow = Row:new(i, dbMatrix[i], initialState)
+        local newRow = Row:new(i, dbMatrix[i], initialState, i)
         add(matrix, newRow)
         end
     end
@@ -173,7 +176,7 @@ function duplicateRow(r)
 end
 
 function addRows(r)
-    if r.n ~= dRow.flag then
+    if r.n ~= dRow.orig then
         for i = 1,nRows do
             local gem1 = matrix[r.n].gems[i]
             local gem2 = dRow.gems[i]
@@ -188,23 +191,48 @@ function addRows(r)
             end
             matrix[r.n].gems[i] = gem1
         end
+        -- Consume add power
+        if addGauge > 0 then
+            addGauge = addGauge - 1
+        end
     end
-    if addGauge > 0 then
-        addGauge = addGauge - 1
+end
+
+function extractRow(r)
+    r.orig = Sel.n
+    swapRow = r
+    del(matrix, Sel.n)
+end
+
+function refreshPositions()
+    local auxTable = {}
+    for i = 1, nRows do
+        if matrix[i].n ~= i then
+            add(auxtable, matrix[matrix[i].n])
+            matrix[matrix[i].n] = matrix[i]
+            matrix[i] = auxTable[1]
+            matrix[i].orig = i
+            del(auxTable, 1)
+        end
     end
 end
 
 -- d - 1 to the right
 -- d - 0 to the left
 function moveRow(d)
-    local r = matrix[Sel.n+1]
+    local r = matrix[Sel.n]
     if d == 1 and Sel.state == 0 then
         addRows(r)
         dRow = nil    
         Sel.state = 1
-    elseif d == 0 and Sel.state > 1 then
-        r.state = r.state - 1
+    elseif d == 1 and Sel.state == 1 then
+        extractRow(r)
+        r.state = 2
         Sel.state = r.state
+    elseif d == 0 and Sel.state == 2 then
+        swapRow.state = 1
+        Sel.state = swapRow.state
+        refreshPositions()
     elseif d == 0 and Sel.state == 1 then
         duplicateRow(r)
         dRow.state = 0
@@ -215,7 +243,7 @@ end
 function transmuteRow()
     if Sel.state == 1 then
         for i=1, nRows do
-            local rowG = matrix[Sel.n + 1].gems
+            local rowG = matrix[Sel.n].gems
             local gem = rowG[i]
             gem = gem + factor
             if gem < minI then
@@ -223,7 +251,7 @@ function transmuteRow()
             elseif gem > maxI then
                 gem = minI
             end
-            matrix[Sel.n + 1].gems[i] = gem
+            matrix[Sel.n].gems[i] = gem
         end
     elseif Sel.state == 0 then
         for i=1, nRows do
@@ -238,26 +266,43 @@ function transmuteRow()
             dRow.gems[i] = gem
         end
     end
-    if swapGauge > 0 then
-        swapGauge = swapGauge - 1
-    end
 end
 
 function processUp()
-    if Sel.n > 0 and Sel.state == 1 then
+    if Sel.n > 1 then
         Sel.n = Sel.n - 1
-    elseif Sel.state == 0 and Sel.n > 0 then -- Duplicate and add
-        Sel.n = Sel.n - 1
-        dRow.n = Sel.n + 1
+    end
+    if Sel.state == 0 then
+        dRow.n = Sel.n
+    end
+    if Sel.state == 2 then
+        swapRow.n = Sel.n
+        for i=1,nRows do
+            if matrix[i] ~= swapRow then
+                matrix[i].n = matrix[i].orig
+            end
+        end
+        matrix[Sel.n].orig = matrix[Sel.n].n
+        matrix[Sel.n].n = swapRow.orig
     end
 end
 
 function processDown()
-    if Sel.n < 2 and Sel.state == 1 then
+    if Sel.n < 3 then
         Sel.n = Sel.n + 1
-    elseif Sel.state == 0 and Sel.n < 2 then
-        Sel.n = Sel.n + 1
-        dRow.n = Sel.n + 1
+    end
+    if Sel.state == 0 then
+        dRow.n = Sel.n
+    end
+    if Sel.state == 2 then
+        swapRow.n = Sel.n
+        for i=1,nRows do
+            if matrix[i] ~= swapRow then
+                matrix[i].n = matrix[i].orig
+            end
+        end
+        matrix[Sel.n].orig = matrix[Sel.n].n
+        matrix[Sel.n].n = swapRow.orig
     end
 end
 
