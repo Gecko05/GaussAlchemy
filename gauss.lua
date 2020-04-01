@@ -2,6 +2,7 @@
 -- puzzle game inspired by gauss jordan
 
 local matrix = {}
+local expected = {}
 local debug = 1
 local minI = -2
 local maxI = 2
@@ -16,13 +17,18 @@ local dRow = nil
 local swapRow = nil
 local addGauge = 8
 local swapGauge = 8
+local gemColors = {12, 3, 9, 4, 8}
 
 local tileW = 9
 local matrixSize = tileW * nRows
 local sx0 = 64 - ((matrixSize)/2)
+local msx0 = 64 - ((4*nRows)/2) - 1
 local sy0 = 40
+local msy0 = 50 + matrixSize + 10
 local blockMargin = 11
+local gaugeMargin = 16
 local tx0 = matrixSize + blockMargin
+local mx0 = (4*nRows) + blockMargin
 local wh = 5
 ---------------------------- R O W S -------------------------
 Row = {n = 0, gems = 0, state = 0, orig = 0}
@@ -56,6 +62,26 @@ function Row:draw()
     end
 end
 
+miniRow = {n = 0, gems = 0}
+
+function miniRow:new(n, gems)
+    self.__index = self
+    o = {}
+    o.n = n
+    o.gems = gems
+    return setmetatable(o, self)
+end
+
+function miniRow:draw()
+    for i = 0, nRows-1 do
+        local dx = (i % 3) * 4
+        local dy = (self.n - 1) * 4
+        local x0 = msx0 + dx
+        local y0 = msy0 + dy
+        rectfill(x0, y0, x0+2, y0+2, gemColors[self.gems[i+1]+3])
+    end
+end
+
 function drawSel()
     local w = 3 * tileW
     local h = tileW
@@ -63,21 +89,34 @@ function drawSel()
     local y0 = ((Sel.n - 1)*(h)) + sy0
     local x0 = sx0 - margin
     local x1 = sx0 + matrixSize
+    local color = 0
     if Sel.state == 0 then
         x0 = x0 - tx0
         x1 = x1 - tx0
+        color = 1
     elseif Sel.state == 2 then
         x0 = x0 + tx0
         x1 = x1 + tx0
+        color = 2
     end
-    spr(cursorSpr, x0, y0, 1, 1, true)
-    spr(cursorSpr, x1, y0)
+    spr(cursorSpr+color, x0, y0, 1, 1, true)
+    spr(cursorSpr+color, x1, y0)
 end
 ---------------------------- D R A W -------------------------
+
 function drawMatrix()  
     for i = 1, nRows do
         if matrix[i] ~= nil then
             matrix[i]:draw()
+        end
+    end
+end
+
+function drawExpected()  
+    spr(202, msx0 - 11, msy0 - 7, 4, 4)
+    for i = 1, nRows do
+        if expected[i] ~= nil then
+            expected[i]:draw()
         end
     end
 end
@@ -111,12 +150,12 @@ end
 
 function drawSwapGauge()
     local x0 = sx0 + matrixSize + blockMargin - 1
-    spr(28, x0, sy0 - blockMargin)
-    spr(29, x0+7, sy0 - blockMargin)
-    spr(29, x0+13, sy0 - blockMargin)
-    spr(28, x0+19, sy0 - blockMargin, 1, 1, true)
+    spr(28, x0, sy0 - gaugeMargin)
+    spr(29, x0+7, sy0 - gaugeMargin)
+    spr(29, x0+13, sy0 - gaugeMargin)
+    spr(28, x0+19, sy0 - gaugeMargin, 1, 1, true)
     local x0 = x0
-    local y0 = sy0 - blockMargin + 1
+    local y0 = sy0 - gaugeMargin + 1
     local y1 = y0 + 4
     local dx = (8 - swapGauge) * 3
     local x1 = x0 + dx
@@ -125,12 +164,12 @@ end
 
 function drawAddGauge()
     local x0 = sx0 - matrixSize - blockMargin - 1
-    spr(12, x0, sy0 - blockMargin)
-    spr(13, x0+7, sy0 - blockMargin)
-    spr(13, x0+13, sy0 - blockMargin)
-    spr(12, x0+19, sy0 - blockMargin, 1, 1, true)
+    spr(12, x0, sy0 - gaugeMargin)
+    spr(13, x0+7, sy0 - gaugeMargin)
+    spr(13, x0+13, sy0 - gaugeMargin)
+    spr(12, x0+19, sy0 - gaugeMargin, 1, 1, true)
     local x0 = x0 + 26
-    local y0 = sy0 - blockMargin + 1
+    local y0 = sy0 - gaugeMargin + 1
     local y1 = y0 + 4
     local dx = (8 - addGauge) * 3
     local x1 = x0 - dx
@@ -147,6 +186,7 @@ function _draw()
  drawBackground()
  drawGauges()
  drawMatrix()
+ drawExpected()
  drawDuplicate()
  drawSel()
 end
@@ -158,6 +198,8 @@ function _init()
         if debug == 1 then
         local newRow = Row:new(i, dbMatrix[i], initialState, i)
         add(matrix, newRow)
+        local newMiniRow = miniRow:new(i, cloneTable(dbMatrix[i]))
+        add(expected, newMiniRow)
         end
     end
 end
@@ -197,24 +239,24 @@ function addRows(r)
         end
     end
 end
-
+-- Extract row to insert in a new position
 function extractRow(r)
     r.orig = Sel.n
     swapRow = r
-    del(matrix, Sel.n)
 end
 
-function refreshPositions()
+function insertRow()
+    swapRow.state = 1
+    Sel.state = swapRow.state
+end
+
+function updatePositions()
     local auxTable = {}
     for i = 1, nRows do
-        if matrix[i].n ~= i then
-            add(auxtable, matrix[matrix[i].n])
-            matrix[matrix[i].n] = matrix[i]
-            matrix[i] = auxTable[1]
-            matrix[i].orig = i
-            del(auxTable, 1)
-        end
+        matrix[i].orig = matrix[i].n
+        auxTable[matrix[i].n] = matrix[i]
     end
+    matrix = auxTable
 end
 
 -- d - 1 to the right
@@ -230,9 +272,8 @@ function moveRow(d)
         r.state = 2
         Sel.state = r.state
     elseif d == 0 and Sel.state == 2 then
-        swapRow.state = 1
-        Sel.state = swapRow.state
-        refreshPositions()
+        insertRow()
+        updatePositions()
     elseif d == 0 and Sel.state == 1 then
         duplicateRow(r)
         dRow.state = 0
