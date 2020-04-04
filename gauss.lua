@@ -18,6 +18,42 @@ local swapRow = nil
 local addGauge = 8
 local swapGauge = 8
 local gemColors = {12, 3, 9, 4, 8}
+local currLevel = 3
+
+local levelStart =  {
+                {
+                    {2,2,2},
+                    {1,1,1},
+                    {-2,-2,-2}
+                },
+                {
+                    {2,1,2},
+                    {-1,-1,-1},
+                    {-1,-1,-1}
+                },
+                {
+                    {-2,-1,-2},
+                    {1,1,2},
+                    {1,0,0}
+                }
+}
+local levelGoal =  {
+                {
+                    {1,1,1},
+                    {0,0,0},
+                    {1,1,1}
+                },
+                {
+                    {1,0,1},
+                    {1,0,1},
+                    {1,0,1}
+                },
+                {
+                    {1,0,0},
+                    {0,1,0},
+                    {0,0,1}
+                }
+}
 
 local tileW = 9
 local matrixSize = tileW * nRows
@@ -196,9 +232,9 @@ function _init()
     palt(15, true)
     for i = 1, nRows do
         if debug == 1 then
-        local newRow = Row:new(i, dbMatrix[i], initialState, i)
+        local newRow = Row:new(i, cloneTable(levelStart[currLevel][i]), initialState, i)
         add(matrix, newRow)
-        local newMiniRow = miniRow:new(i, cloneTable(dbMatrix[i]))
+        local newMiniRow = miniRow:new(i, levelGoal[currLevel][i])
         add(expected, newMiniRow)
         end
     end
@@ -257,6 +293,10 @@ function updatePositions()
         auxTable[matrix[i].n] = matrix[i]
     end
     matrix = auxTable
+    -- Consume swap power
+    if swapGauge > 0 then
+        swapGauge = swapGauge - 1
+    end
 end
 
 -- d - 1 to the right
