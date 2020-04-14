@@ -1,5 +1,5 @@
 -- gauss alchemy
--- puzzle game inspired by gauss jordan
+-- by Gecko05
 
 local matrix = {}
 local expected = {}
@@ -18,7 +18,8 @@ local swapRow = nil
 local addGauge = 8
 local swapGauge = 8
 local gemColors = {12, 3, 9, 4, 8}
-local currLevel = 3
+local currLevel = 1
+local winState = 0
 
 local levelStart =  {
                 {
@@ -118,6 +119,7 @@ function miniRow:draw()
     end
 end
 
+---------------------------- D R A W -------------------------
 function drawSel()
     local w = 3 * tileW
     local h = tileW
@@ -126,10 +128,14 @@ function drawSel()
     local x0 = sx0 - margin
     local x1 = sx0 + matrixSize
     local color = 0
-    if Sel.state == 0 then
+    if Sel.state == 0 and Sel.n > 0 then
         x0 = x0 - tx0
         x1 = x1 - tx0
         color = 1
+    elseif Sel.state == 1 and Sel.n == 0 then
+        x0 = x0 + 9
+        x1 = x1 - 9
+        y0 = y0 - 7
     elseif Sel.state == 2 then
         x0 = x0 + tx0
         x1 = x1 + tx0
@@ -138,7 +144,6 @@ function drawSel()
     spr(cursorSpr+color, x0, y0, 1, 1, true)
     spr(cursorSpr+color, x1, y0)
 end
----------------------------- D R A W -------------------------
 
 function drawMatrix()  
     for i = 1, nRows do
@@ -170,6 +175,7 @@ function drawBackground()
     local x1 = x0 + matrixSize + 1
     local y0 = sy0 - margin
     local y1 = y0 + matrixSize + 1
+    -- Draw the background squares
     rectfill(x0, y0, x1, y1, 13) 
     rect(x0-1, y0-1, x1+1, y1+1, 7) 
 
@@ -182,6 +188,17 @@ function drawBackground()
     x1 = x1 + blockMargin * 2 + matrixSize * 2
     rectfill(x0, y0, x1, y1, 13) 
     rect(x0-1, y0-1, x1+1, y1+1, 7) 
+
+    -- Draw the desk
+    line(30, 102, 98, 102, 5)
+    line(30, 102, 30-15, 102+15)
+    line(98, 102, 98+15, 102+15)
+    line(30-15,102+15, 98+15, 102+15)
+    line(30-15,102+15+2, 98+15, 102+15+2)
+    line(30-15,102+15,30-15,102+15+11)
+    line(98+15,102+15,98+15,102+15+11)
+    spr(206, 35, 92, 2, 2)
+    spr(231, 79, 94, 3, 2)
 end
 
 function drawSwapGauge()
@@ -217,9 +234,17 @@ function drawGauges()
     drawSwapGauge()
 end
 
+function drawButton()
+    local x0 = 59
+    -- Draw the submit button
+    spr(16+(winState*2), x0, sy0 - gaugeMargin)
+    rect(x0-1, sy0 - gaugeMargin-1, x0+7, sy0 - gaugeMargin + 7, 5)
+end
+
 function _draw()
  cls(6)
  drawBackground()
+ drawButton()
  drawGauges()
  drawMatrix()
  drawExpected()
@@ -227,19 +252,41 @@ function _draw()
  drawSel()
 end
 ---------------------------- I N I T ------------------------
+function fillExpected()
+    expected = {}
+    for i = 1, nRows do
+        local newMiniRow = miniRow:new(i, levelGoal[currLevel][i])
+        add(expected, newMiniRow)
+    end
+end
+
+function fillMatrix()
+    matrix = {}
+    for i = 1, nRows do
+        local newRow = Row:new(i, cloneTable(levelStart[currLevel][i]), initialState, i)
+        add(matrix, newRow)
+    end
+end
+
 function _init()
     palt(0, false)
     palt(15, true)
-    for i = 1, nRows do
-        if debug == 1 then
-        local newRow = Row:new(i, cloneTable(levelStart[currLevel][i]), initialState, i)
-        add(matrix, newRow)
-        local newMiniRow = miniRow:new(i, levelGoal[currLevel][i])
-        add(expected, newMiniRow)
-        end
-    end
+    fillExpected()
+    fillMatrix()
 end
 ---------------------------- U P D A T E --------------------
+function checkForWin()
+    local w = 1
+    for i=1,nRows do
+        for k, v in pairs(expected[i].gems) do
+            if v ~= matrix[i].gems[k] then
+                w = 0
+            end
+        end
+    end
+    winState = w
+end
+
 function cloneTable(t)
     x = {}
     for k, v in pairs(t) do
@@ -352,6 +399,9 @@ end
 function processUp()
     if Sel.n > 1 then
         Sel.n = Sel.n - 1
+    elseif
+       Sel.n > 0 and Sel.state == 1 then
+       Sel.n = Sel.n - 1
     end
     if Sel.state == 0 then
         dRow.n = Sel.n
@@ -387,16 +437,42 @@ function processDown()
     end
 end
 
+function advanceLevel()
+    if currLevel < 3 then
+        currLevel = currLevel + 1
+        fillExpected()
+        fillMatrix()
+        winState = 0
+    end
+end
+
+function resetLevel()
+    fillExpected()
+    fillMatrix()
+end
+
+function processZet()
+    if Sel.n > 0 and Sel.n < 4 then
+        transmuteRow()
+    elseif Sel.n == 0 and winState == 1 then
+        advanceLevel()
+    elseif Sel.n == 0 and winState == 0 then
+        resetLevel()
+    end
+end
+
 function _update()
+ checkForWin()
+ -- Pressing Z
  if btnp(4) then
-  transmuteRow()
+  processZet()
  elseif btnp(3) then
   processDown()
  elseif btnp(2) then
   processUP()
- elseif btnp(1) then
+ elseif btnp(1) and Sel.n > 0 then
   moveRow(1)
- elseif btnp(0) then
+ elseif btnp(0) and Sel.n > 0 then
   moveRow(0)
  end
 end
