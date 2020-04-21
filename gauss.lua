@@ -237,7 +237,7 @@ end
 function drawButton()
     local x0 = 59
     -- Draw the submit button
-    spr(16+(winState*2), x0, sy0 - gaugeMargin)
+    spr(18+(winState*2), x0, sy0 - gaugeMargin)
     rect(x0-1, sy0 - gaugeMargin-1, x0+7, sy0 - gaugeMargin + 7, 5)
 end
 
@@ -285,6 +285,10 @@ function checkForWin()
         end
     end
     winState = w
+    -- Lose
+    if swapGauge <= 0 and addGauge <= 0 then
+        winState = -1
+    end
 end
 
 function cloneTable(t)
@@ -449,6 +453,9 @@ end
 function resetLevel()
     fillExpected()
     fillMatrix()
+    addGauge = 8
+    swapGauge = 8
+    winState = 0
 end
 
 function processZet()
@@ -456,7 +463,7 @@ function processZet()
         transmuteRow()
     elseif Sel.n == 0 and winState == 1 then
         advanceLevel()
-    elseif Sel.n == 0 and winState == 0 then
+    elseif Sel.n == 0 and winState <= 0 then
         resetLevel()
     end
 end
@@ -470,9 +477,9 @@ function _update()
   processDown()
  elseif btnp(2) then
   processUP()
- elseif btnp(1) and Sel.n > 0 then
+ elseif btnp(1) and Sel.n > 0 and winState >= 0 then
   moveRow(1)
- elseif btnp(0) and Sel.n > 0 then
+ elseif btnp(0) and Sel.n > 0 and winState >= 0 then
   moveRow(0)
  end
 end
