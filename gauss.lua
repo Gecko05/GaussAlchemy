@@ -20,6 +20,30 @@ local swapGauge = 8
 local gemColors = {12, 3, 9, 4, 8}
 local currLevel = 1
 local winState = 0
+local finalLevel = 4
+
+local levelGoal =  {
+                {
+                    {1,1,1},
+                    {0,0,0},
+                    {1,1,1}
+                },
+                {
+                    {1,0,1},
+                    {1,0,1},
+                    {1,0,1}
+                },
+                {
+                    {1,0,0},
+                    {0,1,0},
+                    {0,0,1}
+                },
+                {
+                    {1,0,1},
+                    {0,1,0},
+                    {1,0,1}
+                }
+}
 
 local levelStart =  {
                 {
@@ -36,24 +60,8 @@ local levelStart =  {
                     {-2,-1,-2},
                     {1,1,2},
                     {1,0,0}
-                }
-}
-local levelGoal =  {
-                {
-                    {1,1,1},
-                    {0,0,0},
-                    {1,1,1}
                 },
-                {
-                    {1,0,1},
-                    {1,0,1},
-                    {1,0,1}
-                },
-                {
-                    {1,0,0},
-                    {0,1,0},
-                    {0,0,1}
-                }
+                levelGoal[3]
 }
 
 local tileW = 9
@@ -199,6 +207,9 @@ function drawBackground()
     line(98+15,102+15,98+15,102+15+11)
     spr(206, 35, 92, 2, 2)
     spr(231, 79, 94, 3, 2)
+
+    -- Show level
+    print("Level ".. currLevel, 49, 14)
 end
 
 function drawSwapGauge()
@@ -335,6 +346,10 @@ end
 function insertRow()
     swapRow.state = 1
     Sel.state = swapRow.state
+    -- Consume swap power
+    if swapGauge > 0 and swapRow.orig ~= Sel.n then
+        swapGauge = swapGauge - 1
+    end
 end
 
 function updatePositions()
@@ -344,10 +359,6 @@ function updatePositions()
         auxTable[matrix[i].n] = matrix[i]
     end
     matrix = auxTable
-    -- Consume swap power
-    if swapGauge > 0 then
-        swapGauge = swapGauge - 1
-    end
 end
 
 -- d - 1 to the right
@@ -442,7 +453,7 @@ function processDown()
 end
 
 function advanceLevel()
-    if currLevel < 3 then
+    if currLevel < finalLevel then
         currLevel = currLevel + 1
         fillExpected()
         fillMatrix()
@@ -468,6 +479,18 @@ function processZet()
     end
 end
 
+function processLeft()
+    if Sel.n > 0 and winState >= 0 and (addGauge > 0 or Sel.state == 2) then
+        moveRow(0)
+    end
+end
+
+function processRight()
+    if Sel.n > 0 and winState >= 0 and swapGauge > 0 then
+        moveRow(1)
+    end
+end
+
 function _update()
  checkForWin()
  -- Pressing Z
@@ -477,9 +500,9 @@ function _update()
   processDown()
  elseif btnp(2) then
   processUP()
- elseif btnp(1) and Sel.n > 0 and winState >= 0 then
-  moveRow(1)
- elseif btnp(0) and Sel.n > 0 and winState >= 0 then
-  moveRow(0)
+ elseif btnp(1) then
+  processRight()
+ elseif btnp(0) then
+  processLeft()
  end
 end
