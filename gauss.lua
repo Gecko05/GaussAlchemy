@@ -12,7 +12,6 @@ local sprInc = 32
 local cursorSpr = 160
 local initialState = 1
 local Sel = {n = 1, state = initialState}
-local factor = 1
 local dRow = nil
 local swapRow = nil
 local addGauge = 8
@@ -21,8 +20,11 @@ local gemColors = {12, 3, 9, 4, 8}
 local currLevel = 1
 local winState = 0
 local finalLevel = 4
-
-local levelGoal =  {
+local isTutorial = 1
+local tutCursor = 23
+local tutorialPhase = 1
+-- Tutorial Levels
+local tutlevelGoal =  {
                 {
                     {1,1,1},
                     {0,0,0},
@@ -45,7 +47,7 @@ local levelGoal =  {
                 }
 }
 
-local levelStart =  {
+local tutlevelStart =  {
                 {
                     {2,2,2},
                     {1,1,1},
@@ -61,7 +63,7 @@ local levelStart =  {
                     {1,1,2},
                     {1,0,0}
                 },
-                levelGoal[3]
+                tutlevelGoal[3]
 }
 
 local tileW = 9
@@ -75,6 +77,9 @@ local gaugeMargin = 16
 local tx0 = matrixSize + blockMargin
 local mx0 = (4*nRows) + blockMargin
 local wh = 5
+-- For tutorial cursor animations
+local bl = 0
+local tutBl = 0
 ---------------------------- R O W S -------------------------
 Row = {n = 0, gems = 0, state = 0, orig = 0}
 -- n - num of row
@@ -128,6 +133,23 @@ function miniRow:draw()
 end
 
 ---------------------------- D R A W -------------------------
+function drawInstruction1()
+    print("Press X or Z to transmute a row", 2,2,0)
+    spr(tutCursor, 50, 30 + tutBl)
+end
+
+function drawInstructions()
+    if bl % 10 == 0 then
+        if tutBl == 1 then
+            tutBl = 0
+        else
+            tutBl = 1
+        end
+    end
+    bl = bl + 1
+    drawInstruction1()
+end
+
 function drawSel()
     local w = 3 * tileW
     local h = tileW
@@ -261,21 +283,28 @@ function _draw()
  drawExpected()
  drawDuplicate()
  drawSel()
+ if isTutorial == 1 then
+    drawInstructions()
+ end
 end
 ---------------------------- I N I T ------------------------
 function fillExpected()
     expected = {}
-    for i = 1, nRows do
-        local newMiniRow = miniRow:new(i, levelGoal[currLevel][i])
-        add(expected, newMiniRow)
+    if isTutorial == 1 then
+        for i = 1, nRows do
+            local newMiniRow = miniRow:new(i, tutLevelGoal[currLevel][i])
+            add(expected, newMiniRow)
+        end
     end
 end
 
 function fillMatrix()
     matrix = {}
-    for i = 1, nRows do
-        local newRow = Row:new(i, cloneTable(levelStart[currLevel][i]), initialState, i)
-        add(matrix, newRow)
+    if isTutorial == 1 then
+        for i = 1, nRows do
+            local newRow = Row:new(i, cloneTable(tutLevelStart[currLevel][i]), initialState, i)
+            add(matrix, newRow)
+        end
     end
 end
 
@@ -383,12 +412,12 @@ function moveRow(d)
     end
 end
 
-function transmuteRow()
+function transmuteRow(q)
     if Sel.state == 1 then
         for i=1, nRows do
             local rowG = matrix[Sel.n].gems
             local gem = rowG[i]
-            gem = gem + factor
+            gem = gem + q
             if gem < minI then
                 gem = maxI
             elseif gem > maxI then
@@ -400,7 +429,7 @@ function transmuteRow()
         for i=1, nRows do
             local rowG = dRow.gems
             local gem = rowG[i]
-            gem = gem + factor
+            gem = gem + q
             if gem < minI then
                 gem = maxI
             elseif gem > maxI then
@@ -471,11 +500,17 @@ end
 
 function processZet()
     if Sel.n > 0 and Sel.n < 4 then
-        transmuteRow()
+        transmuteRow(1)
     elseif Sel.n == 0 and winState == 1 then
         advanceLevel()
     elseif Sel.n == 0 and winState <= 0 then
         resetLevel()
+    end
+end
+
+function processX()
+    if Sel.n > 0 and Sel.n < 4 then
+        transmuteRow(-1)
     end
 end
 
@@ -493,9 +528,13 @@ end
 
 function _update()
  checkForWin()
+ checkTutorial()
  -- Pressing Z
  if btnp(4) then
   processZet()
+ -- Pressing X
+ elseif btnp(5) then
+  processX()
  elseif btnp(3) then
   processDown()
  elseif btnp(2) then
