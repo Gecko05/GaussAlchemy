@@ -19,35 +19,55 @@ local swapGauge = 8
 local gemColors = {12, 3, 9, 4, 8}
 local currLevel = 1
 local winState = 0
-local finalLevel = 4
-local isTutorial = 1
+local finalLevel = 8
+local isTutorial = 0
 local tutCursor = 23
 local tutorialPhase = 1
 -- Tutorial Levels
-local tutlevelGoal =  {
-                {
+local levelGoal =  {
+                {--1
                     {1,1,1},
                     {0,0,0},
                     {1,1,1}
                 },
-                {
+                {--2
                     {1,0,1},
                     {1,0,1},
                     {1,0,1}
                 },
-                {
+                {--3
                     {1,0,0},
                     {0,1,0},
                     {0,0,1}
                 },
-                {
+                {--4
                     {1,0,1},
                     {0,1,0},
                     {1,0,1}
+                },
+                {--5
+                    {0,1,0},
+                    {1,0,1},
+                    {0,1,0}
+                },
+                {--6
+                    {1,-2,1},
+                    {-2,-2,-2},
+                    {1,-2,1}
+                },
+                {--7
+                    {-2,0,-2},
+                    {0,2,0},
+                    {-2,0,-2}
+                },
+                {--8
+                    {-2,-1,0},
+                    {1,2,-2},
+                    {-1,0,1}
                 }
 }
 
-local tutlevelStart =  {
+local levelStart =  {
                 {
                     {2,2,2},
                     {1,1,1},
@@ -63,7 +83,12 @@ local tutlevelStart =  {
                     {1,1,2},
                     {1,0,0}
                 },
-                tutlevelGoal[3]
+                levelGoal[3],
+                levelGoal[4],
+                levelGoal[5],
+                levelGoal[6],
+                levelGoal[7],
+                levelGoal[8]
 }
 
 local tileW = 9
@@ -232,6 +257,10 @@ function drawBackground()
 
     -- Show level
     print("Level ".. currLevel, 49, 14)
+    -- Draw lose message
+    if winState == -1 then
+        print("You lose :(", 40, 4)
+    end
 end
 
 function drawSwapGauge()
@@ -290,21 +319,17 @@ end
 ---------------------------- I N I T ------------------------
 function fillExpected()
     expected = {}
-    if isTutorial == 1 then
-        for i = 1, nRows do
-            local newMiniRow = miniRow:new(i, tutLevelGoal[currLevel][i])
-            add(expected, newMiniRow)
-        end
-    end
+    for i = 1, nRows do
+        local newMiniRow = miniRow:new(i, levelGoal[currLevel][i])
+        add(expected, newMiniRow)
+     end
 end
 
 function fillMatrix()
     matrix = {}
-    if isTutorial == 1 then
-        for i = 1, nRows do
-            local newRow = Row:new(i, cloneTable(tutLevelStart[currLevel][i]), initialState, i)
-            add(matrix, newRow)
-        end
+    for i = 1, nRows do
+        local newRow = Row:new(i, cloneTable(levelStart[currLevel][i]), initialState, i)
+        add(matrix, newRow)
     end
 end
 
@@ -487,6 +512,8 @@ function advanceLevel()
         fillExpected()
         fillMatrix()
         winState = 0
+        addGauge = 8
+        swapGauge = 8
     end
 end
 
@@ -500,7 +527,7 @@ end
 
 function processZet()
     if Sel.n > 0 and Sel.n < 4 then
-        transmuteRow(1)
+        transmuteRow(-1)
     elseif Sel.n == 0 and winState == 1 then
         advanceLevel()
     elseif Sel.n == 0 and winState <= 0 then
@@ -510,7 +537,7 @@ end
 
 function processX()
     if Sel.n > 0 and Sel.n < 4 then
-        transmuteRow(-1)
+        transmuteRow(1)
     end
 end
 
@@ -528,7 +555,6 @@ end
 
 function _update()
  checkForWin()
- checkTutorial()
  -- Pressing Z
  if btnp(4) then
   processZet()
