@@ -95,7 +95,7 @@ local tileW = 9
 local matrixSize = tileW * nRows
 local sx0 = 64 - ((matrixSize)/2)
 local msx0 = 64 - ((4*nRows)/2) - 1
-local sy0 = 40
+local sy0 = 34
 local msy0 = 50 + matrixSize + 10
 local blockMargin = 11
 local gaugeMargin = 16
@@ -256,10 +256,37 @@ function drawBackground()
     spr(231, 79, 94, 3, 2)
 
     -- Show level
-    print("Level ".. currLevel, 49, 14)
+    print("Level ".. currLevel, 49, 8)
     -- Draw lose message
     if winState == -1 then
         print("You lose :(", 40, 4)
+    end
+    if currLevel == 1 then
+        if winState == 1 then
+            print("Good job! Select and press Z\non the green dude to advance", 7,65,0)
+        elseif winState == 0 then
+            print("      Press Z or X \nto change the row colors",15,65,0)
+        elseif winState == 1 then
+            print("      Press the red dude to restart",15,65,0)
+        end
+    elseif currLevel == 2 then
+        if winState == 1 then
+            print("If the orange bar runs empty\nyou won't be able to add rows", 8,65,0)
+        else
+            if Sel.state == 0 then
+                print("Select where to add the row\n then press right to add it", 8,65,0)
+            else
+                print("Select a row and press left\n to add it to another row", 8,65,0)
+            end
+        end
+    elseif currLevel == 3 then
+        if winState == 1 then
+            print("  If the blue bar runs empty\nyou won't be able to swap rows", 4,65,0)
+        else
+            print("Select a row and press right\nto swap it with another one", 8,65,0)
+        end
+    elseif currLevel == 4 then
+        print("        Great job!\n Now try to reach Level 8!",10,65,0)
     end
 end
 
@@ -338,6 +365,7 @@ function _init()
     palt(15, true)
     fillExpected()
     fillMatrix()
+    music(0)
 end
 ---------------------------- U P D A T E --------------------
 function checkForWin()
@@ -391,6 +419,7 @@ function addRows(r)
         end
     end
 end
+
 -- Extract row to insert in a new position
 function extractRow(r)
     r.orig = Sel.n
@@ -549,6 +578,8 @@ end
 
 function processRight()
     if Sel.n > 0 and winState >= 0 and swapGauge > 0 then
+        moveRow(1)
+    elseif Sel.state == 0 then
         moveRow(1)
     end
 end
