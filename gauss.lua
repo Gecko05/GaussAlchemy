@@ -393,6 +393,7 @@ function cloneTable(t)
 end
 
 function duplicateRow(r)
+    sfx(5)
     newGems = cloneTable(r.gems)
     dRow = Row:new(r.n, newGems, 0, r.n)
 end
@@ -418,10 +419,12 @@ function addRows(r)
             addGauge = addGauge - 1
         end
     end
+    sfx(5)
 end
 
 -- Extract row to insert in a new position
 function extractRow(r)
+    sfx(3)
     r.orig = Sel.n
     swapRow = r
 end
@@ -458,6 +461,7 @@ function moveRow(d)
         Sel.state = r.state
     elseif d == 0 and Sel.state == 2 then
         insertRow()
+        sfx(3)
         updatePositions()
     elseif d == 0 and Sel.state == 1 then
         duplicateRow(r)
@@ -479,6 +483,7 @@ function transmuteRow(q)
             end
             matrix[Sel.n].gems[i] = gem
         end
+        sfx(6)
     elseif Sel.state == 0 then
         for i=1, nRows do
             local rowG = dRow.gems
@@ -491,12 +496,14 @@ function transmuteRow(q)
             end
             dRow.gems[i] = gem
         end
+        sfx(6)
     end
 end
 
 function processUp()
     if Sel.n > 1 then
         Sel.n = Sel.n - 1
+        sfx(7)
     elseif
        Sel.n > 0 and Sel.state == 1 then
        Sel.n = Sel.n - 1
@@ -519,6 +526,7 @@ end
 function processDown()
     if Sel.n < 3 then
         Sel.n = Sel.n + 1
+        sfx(7)
     end
     if Sel.state == 0 then
         dRow.n = Sel.n
