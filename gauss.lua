@@ -575,8 +575,10 @@ function processZet()
     if Sel.n > 0 and Sel.n < 4 then
         transmuteRow(-1)
     elseif Sel.n == 0 and winState == 1 then
+        sfx(6)
         advanceLevel()
     elseif Sel.n == 0 and winState <= 0 then
+        sfx(6)
         resetLevel()
     end
 end
