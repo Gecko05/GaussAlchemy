@@ -1,28 +1,28 @@
 -- gauss alchemy
 -- by Gecko05
 
-local matrix = {}
-local expected = {}
-local debug = 1
-local minI = -2
-local maxI = 2
-local dbMatrix = {{0,-1, -1},{1, 2, 1},{2, 2, -2}}
-local nRows = 3
-local sprInc = 32
-local cursorSpr = 160
-local initialState = 1
-local Sel = {n = 1, state = initialState}
-local dRow = nil
-local swapRow = nil
-local addGauge = 8
-local swapGauge = 8
-local gemColors = {12, 3, 9, 4, 8}
-local currLevel = 1
-local winState = 0
-local finalLevel = 8
-local isTutorial = 0
-local tutCursor = 23
-local tutorialPhase = 1
+matrix = {}
+expected = {}
+debug = 1
+minI = -2
+maxI = 2
+dbMatrix = {{0,-1, -1},{1, 2, 1},{2, 2, -2}}
+nRows = 3
+sprInc = 32
+cursorSpr = 160
+initialState = 1
+Sel = {n = 1, state = initialState}
+dRow = nil
+swapRow = nil
+addGauge = 8
+swapGauge = 8
+gemColors = {12, 3, 9, 4, 8}
+currLevel = 1
+winState = 0
+finalLevel = 8
+isTutorial = 0
+tutCursor = 23
+tutorialPhase = 1
 -- Tutorial Levels
 local levelGoal =  {
                 {--1
@@ -368,7 +368,7 @@ function _init()
     music(0)
 end
 ---------------------------- U P D A T E --------------------
-function checkForWin()
+function won()
     local w = 1
     for i=1,nRows do
         for k, v in pairs(expected[i].gems) do
@@ -377,10 +377,19 @@ function checkForWin()
             end
         end
     end
-    winState = w
-    -- Lose
-    if swapGauge <= 0 and addGauge <= 0 then
-        winState = -1
+    return w
+end
+
+function checkForWin()
+    local r = won()
+    if winState == 0 and r == 1 then
+        winState = 1 -- Winning!
+        sfx(9)
+    elseif winState == 1 and r == 0 then
+        winState = 0 -- Back to normal
+    elseif winState == 0 and swapGauge == 0 and addGauge == 0 then
+        winState = -1 -- Losing!
+        sfx(8)
     end
 end
 
