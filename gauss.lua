@@ -23,6 +23,7 @@ finalLevel = 8
 isTutorial = 0
 tutCursor = 23
 tutorialPhase = 1
+frameCounter = 0
 -- Tutorial Levels
 local levelGoal =  {
                 {--1
@@ -105,6 +106,9 @@ local wh = 5
 -- For tutorial cursor animations
 local bl = 0
 local tutBl = 0
+rowFlash = {0,0}
+swapFlash = 0
+addFlash = 0
 ---------------------------- R O W S -------------------------
 Row = {n = 0, gems = 0, state = 0, orig = 0}
 -- n - num of row
@@ -133,6 +137,10 @@ function Row:draw()
         local y0 = sy0 + dy
         local sprGem = (self.gems[i+1] + 2)*32
         spr(sprGem, x0, y0)
+        if rowFlash[1] == self.n and rowFlash[2] > 0 then
+            rectfill(x0, y0, x0+6, y0+6, 7)
+            rowFlash[2] -= 1
+        end
         --rect(x0, y0, x0+wh, y0+wh, -self.gems[i+1]+10)
     end
 end
@@ -158,6 +166,22 @@ function miniRow:draw()
 end
 
 ---------------------------- D R A W -------------------------
+function getFrame(anim)
+    return anim[flr(frameCounter/8)%#anim+1]
+end
+
+function flashRow(r)
+    rowFlash = {r, 3}
+end
+
+function flashSwapGauge()
+    swapFlash = 3
+end
+
+function flashAddGauge()
+    addFlash = 3
+end
+
 function drawInstruction1()
     print("Press X or Z to transmute a row", 2,2,0)
     spr(tutCursor, 50, 30 + tutBl)
@@ -302,6 +326,10 @@ function drawSwapGauge()
     local dx = (8 - swapGauge) * 3
     local x1 = x0 + dx
     rectfill(x0, y0, x1, y1, 5)
+    if swapFlash > 0 then
+        swapFlash -= 1
+        rectfill(x1-2, y0, x1, y1, 7)
+    end
 end
 
 function drawAddGauge()
@@ -316,6 +344,10 @@ function drawAddGauge()
     local dx = (8 - addGauge) * 3
     local x1 = x0 - dx
     rectfill(x0, y0, x1, y1, 5)
+    if addFlash > 0 then
+        addFlash -= 1
+        rectfill(x1+2, y0, x1, y1, 7)
+    end
 end
 
 function drawGauges()
@@ -402,6 +434,7 @@ function cloneTable(t)
 end
 
 function duplicateRow(r)
+    flashRow(r.n)
     sfx(5)
     newGems = cloneTable(r.gems)
     dRow = Row:new(r.n, newGems, 0, r.n)
@@ -426,8 +459,10 @@ function addRows(r)
         -- Consume add power
         if addGauge > 0 then
             addGauge = addGauge - 1
+            flashAddGauge()
         end
     end
+    flashRow(r.n)
     sfx(5)
 end
 
@@ -444,6 +479,7 @@ function insertRow()
     -- Consume swap power
     if swapGauge > 0 and swapRow.orig ~= Sel.n then
         swapGauge = swapGauge - 1
+        flashSwapGauge()
     end
 end
 
@@ -492,6 +528,8 @@ function transmuteRow(q)
             end
             matrix[Sel.n].gems[i] = gem
         end
+        -- Trigger transmuting animation
+        flashRow(Sel.n)
         sfx(6)
     elseif Sel.state == 0 then
         for i=1, nRows do
@@ -604,6 +642,7 @@ function processRight()
 end
 
 function _update()
+ frameCounter += 1
  checkForWin()
  -- Pressing Z
  if btnp(4) then
